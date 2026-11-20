@@ -36,8 +36,9 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path out | Out-Null
-          $exe = Get-ChildItem -Path app/src-tauri/target/release/bundle -Recurse -Filter "*-setup.exe" | Select-Object -First 1
+          $exe = Get-ChildItem -Path . -Recurse -Filter "*-setup.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $exe) { throw "No installer produced" }
+          Write-Host "Found: $($exe.FullName)"
           Copy-Item $exe.FullName -Destination out/
           Get-ChildItem out | Select-Object Name, Length
 
