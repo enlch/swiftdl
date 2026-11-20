@@ -1,0 +1,48 @@
+name: Build SwiftDL Chinese (Windows)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/zh-cn
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Build the interface
+        working-directory: app
+        run: npm ci && npm run build
+
+      - name: Build the Windows installer (NSIS)
+        working-directory: app/src-tauri
+        run: npx --yes @tauri-apps/cli@2 build --bundles nsis
+
+      - name: Collect installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path out | Out-Null
+          $exe = Get-ChildItem -Path app/src-tauri/target/release/bundle -Recurse -Filter "*-setup.exe" | Select-Object -First 1
+          if (-not $exe) { throw "No installer produced" }
+          Copy-Item $exe.FullName -Destination out/
+          Get-ChildItem out | Select-Object Name, Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SwiftDL-zh-CN-windows-x64
+          path: out/*.exe
+          if-no-files-found: error
